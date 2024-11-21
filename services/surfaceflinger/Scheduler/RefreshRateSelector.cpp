@@ -437,7 +437,7 @@ auto RefreshRateSelector::getRankedFrameRatesLocked(const std::vector<LayerRequi
         -> RankedFrameRates {
     using namespace fps_approx_ops;
     ATRACE_CALL();
-    ALOGV("%s: %zu layers, signals: %s", __func__, layers.size(), signals.toString());
+    ALOGV("%s: %zu layers, signals: %s", __func__, layers.size(), signals.toString().c_str());
 
     const auto& activeMode = *getActiveModeLocked().modePtr;
     FrameRateRanking ranking;
@@ -506,7 +506,7 @@ auto RefreshRateSelector::getRankedFrameRatesLocked(const std::vector<LayerRequi
             seamedFocusedLayers > 0 ? activeMode.getGroup() : defaultMode->getGroup();
 
     const auto selectivelyForceIdle = [&]() REQUIRES(mLock) -> RankedFrameRates {
-        ALOGV("localIsIdle: %s", localIsIdle ? "true" : "false");
+        ALOGV("selectivelyForceIdle(): localIsIdle = %s", localIsIdle ? "true" : "false");
         if (localIsIdle && ranking.front().frameRateMode.fps > 60_Hz) {
             /*
              * We heavily rely on touch to boost higher than 60 fps.
@@ -642,17 +642,15 @@ auto RefreshRateSelector::getRankedFrameRatesLocked(const std::vector<LayerRequi
                 continue;
             }
 
-            float layerScore;
             if (layer.vote == LayerVoteType::Heuristic && signals.heuristicIdle && fps > 60_Hz) {
                 // Time for heuristic layer to keep using high refresh rate has expired
                 localIsIdle = true;
                 ALOGV("%s expired to keep using %s", formatLayerInfo(layer, weight).c_str(),
                       to_string(fps).c_str());
                 continue;
-            } else {
-                layerScore =
-                    calculateLayerScoreLocked(layer, fps, isSeamlessSwitch);
             }
+
+            const float layerScore = calculateLayerScoreLocked(layer, fps, isSeamlessSwitch);
             const float weightedLayerScore = weight * layerScore;
 
             // Layer with fixed source has a special consideration which depends on the
